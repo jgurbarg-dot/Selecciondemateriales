@@ -127,7 +127,8 @@ with tab1:
         return color
 
     st.markdown("### 📋 Matriz de Materiales Candidatos")
-    st.dataframe(df_res.style.applymap(color_ratings, subset=['Resistencia Química (A/B/C/D)']), use_container_width=True)
+    # AQUÍ SE REALIZÓ LA MODIFICACIÓN: .style.map en lugar de .style.applymap
+    st.dataframe(df_res.style.map(color_ratings, subset=['Resistencia Química (A/B/C/D)']), use_container_width=True)
     
     st.info("""
     **Leyenda de Calificación:**
