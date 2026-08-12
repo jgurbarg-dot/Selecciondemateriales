@@ -33,15 +33,15 @@ def load_compatibility_data():
             "Hidróxido de Sodio (50%)", "Agua de Mar / Salmuera", "Agua (Limpia / Calderas)", 
             "Acetona", "Clasificación General Hidrocarburos / Gas Natural"
         ],
-        "Acero al Carbón": ["C", "B", "D", "A", "C", "C", "A", "A"],
-        "Acero Inox 304": ["A", "D", "D", "A", "C", "B", "A", "A"],
-        "Acero Inox 316": ["A", "D", "D", "A", "B", "A", "A", "A"],
-        "Titanio": ["A", "D", "D", "A", "A", "A", "D", "A"],
-        "Hastelloy C": ["A", "A", "B", "A", "A", "A", "A", "A"],
-        "PVC (Type 1)": ["A", "C", "A", "A", "A", "A", "D", "D"],
-        "Polipropileno (PP)": ["A", "C", "A", "A", "A", "A", "D", "D"],
-        "PTFE (Teflon)": ["A", "A", "A", "A", "A", "A", "A", "A"],
-        "Viton": ["A", "D", "D", "B", "A", "A", "D", "A"]
+        "Acero al Carbón (ASTM A516 Gr. 70 / AISI 1040)": ["C", "B", "D", "A", "C", "C", "A", "A"],
+        "Acero Inox Austenítico (AISI 304L)": ["A", "D", "D", "A", "C", "B", "A", "A"],
+        "Acero Inox Austenítico (AISI 316L)": ["A", "D", "D", "A", "B", "A", "A", "A"],
+        "Titanio Grado 2 (ASTM B265)": ["A", "D", "D", "A", "A", "A", "D", "A"],
+        "Aleación de Níquel (Hastelloy C-276)": ["A", "A", "B", "A", "A", "A", "A", "A"],
+        "Termoplástico (PVC Sch 80)": ["A", "C", "A", "A", "A", "A", "D", "D"],
+        "Termoplástico (Polipropileno - PP)": ["A", "C", "A", "A", "A", "A", "D", "D"],
+        "Fluoropolímero (PTFE / Teflon)": ["A", "A", "A", "A", "A", "A", "A", "A"],
+        "Elastómero / Sello (FKM / Viton)": ["A", "D", "D", "B", "A", "A", "D", "A"]
     }
     return pd.DataFrame(data)
 
@@ -104,46 +104,61 @@ with tab1:
         nota_extra = "Condiciones normales de operación."
         
         # Restricciones térmicas heurísticas de plásticos / aceros
-        if material in ["PVC (Type 1)", "Polipropileno (PP)"] and temp > 60:
+        if "Termoplástico" in material and temp > 60:
             if calificacion == "A":
                 calificacion = "C"
             nota_extra = "⚠️ Precaución: La temperatura supera el límite recomendado para plásticos estándar (~60-70°C)."
         
-        if material == "Acero al Carbón" and temp > 400:
+        if "Acero al Carbón" in material and temp > 400:
             calificacion = "D"
             nota_extra = "❌ El acero al carbón pierde resistencia mecánica a temperaturas > 400°C (fluencia/creep)."
             
         resultados.append({
-            "Material": material,
+            "Material (Especificación Técnica)": material,
             "Resistencia Química (A/B/C/D)": calificacion,
             "Observación Heurística": nota_extra
         })
     
     df_res = pd.DataFrame(resultados)
     
-    # Función para dar color a la tabla
+    # Función de color corregida para que las letras sean legibles (texto oscuro contrastado)
     def color_ratings(val):
-        color = 'background-color: #d4edda' if val == 'A' else ('background-color: #fff3cd' if val == 'B' else ('background-color: #ffeeba' if val == 'C' else 'background-color: #f8d7da'))
-        return color
+        if val == 'A':
+            return 'background-color: #d4edda; color: #155724; font-weight: bold;'
+        elif val == 'B':
+            return 'background-color: #fff3cd; color: #856404; font-weight: bold;'
+        elif val == 'C':
+            return 'background-color: #ffeeba; color: #856404; font-weight: bold;'
+        else:
+            return 'background-color: #f8d7da; color: #721c24; font-weight: bold;'
 
     st.markdown("### 📋 Matriz de Materiales Candidatos")
-    # AQUÍ SE REALIZÓ LA MODIFICACIÓN: .style.map en lugar de .style.applymap
     st.dataframe(df_res.style.map(color_ratings, subset=['Resistencia Química (A/B/C/D)']), use_container_width=True)
     
+    # Sección de Recomendación Experta y Leyenda
+    st.markdown("### 🏆 Guía de Recomendación Directa")
+    
+    # Filtrar los mejores materiales (categoría A o B tras heurísticas)
+    materiales_recomendados = [r["Material (Especificación Técnica)"] for r in resultados if r["Resistencia Química (A/B/C/D)"] in ["A", "B"]]
+    
+    if materiales_recomendados:
+        st.success(f"**Materiales más recomendados para esta aplicación:**\n- " + "\n- ".join([f"**{m}**" for m in materiales_recomendados]))
+    else:
+        st.warning("⚠️ No hay materiales óptimos en la lista base para estas condiciones extremas. Se requiere una aleación especial o revestimiento (lining).")
+
     st.info("""
-    **Leyenda de Calificación:**
-    * **A:** Excelente (Sin efecto / Muy recomendado)
-    * **B:** Bueno (Efecto menor / Aceptable)
-    * **C:** Precaución (Usar bajo condiciones limitadas o con sobrepesor de corrosión)
-    * **D:** No recomendado (Severo efecto corrosivo)
+    **Leyenda de Calificación Detallada:**
+    * 🟩 **A (Excelente):** Sin efecto químico adverso / Altamente recomendado para diseño a largo plazo.
+    * 🟨 **B (Bueno):** Efecto menor o aceptable / Se puede usar con un sobrepesor de corrosión moderado.
+    * 🟧 **C (Precaución):** Usar solo bajo condiciones limitadas, periodos cortos o inspección frecuente.
+    * 🟥 **D (No recomendado):** Severo ataque corrosivo / Riesgo de falla catastrófica inmediata.
     """)
 
 # --- TAB 2: DISEÑO MECÁNICO ---
 with tab2:
     st.subheader("📐 Cálculo de Espesor de Pared (Recipientes a Presión)")
-    st.markdown("Basado en el código **ASME BPVC Sección VIII** (visto en teoría de diseño de equipos):")
+    st.markdown("Basado en el código **ASME BPVC Sección VIII**:")
     
-    # Fórmula LaTeX
     st.latex(r"t = \frac{P \cdot R}{S \cdot E - 0.6 \cdot P} + CA")
     
     col_c1, col_c2 = st.columns(2)
@@ -169,40 +184,27 @@ with tab3:
     st.subheader("💡 Heurísticas Clave para Ingeniería de Procesos (Briem / Marriaga)")
     
     st.markdown("""
-    * **Efecto de la Temperatura:** Como regla general heurística, la tasa de corrosión **se duplica por cada 10°C** de aumento de temperatura hasta el punto de ebullición. Cuidado con las temperaturas de superficie en chaquetas de vapor.
-    * **Corrosión por Paradas (Downtime Corrosion):** Los equipos fuera de servicio sufren a menudo más corrosión que operando en caliente (por condensación de gases ácidos como $SO_2$ o acumulación de humedad).
-    * **Velocidad y Corrosión-Eserosión (FAC):** En fluidos sucios o de alta velocidad, las capas protectoras de óxido pueden desprenderse. Para tuberías y gasoductos, mantenga velocidades de diseño seguras para evitar cavitación y desgaste de soldaduras.
-    * **Corrosión Influenciada Microbiológicamente (MIC):** ¡Atención crítica! Si se deja agua hidrostática estancada en sistemas de acero inoxidable durante meses, las bacterias pueden perforar el material en poco tiempo mediante estructuras en "cueva".
-    * **fisuración por tensión (SCC):** Los cloruros en concentraciones de pocas ppm, combinados con tensiones residuales de soldadura y temperatura > 60°C, generan fisuración catastrófica en aceros inoxidables austeníticos (304/316).
+    * **Efecto de la Temperatura:** La tasa de corrosión se duplica aproximadamente por cada 10°C de aumento de temperatura.
+    * **Corrosión por Paradas (Downtime):** Los equipos fuera de servicio suelen corroerse más rápido por condensación de vapores húmedos o ácidos.
+    * **Corrosión-Erosión (FAC):** En fluidos turbulentos o con sólidos en suspensión, las velocidades altas destruyen las capas pasivas de protección.
+    * **MIC (Corrosión Microbiológica):** El agua estancada en aceros inoxidables genera colonias bacterianas que perforan el metal en pocos meses.
+    * **SCC (Fisuración por Tensión):** Cloruros libres + tensiones de soldadura + T > 60°C provocan fisuración rápida en aceros austeníticos tipo 304/316.
     """)
 
 # --- TAB 4: GUÍA DE GITHUB Y STREAMLIT ---
 with tab4:
-    st.subheader("🚀 Instrucciones para Subir a GitHub y Desplegar en la Nube")
+    st.subheader("🚀 Instrucciones para Actualizar en GitHub")
     st.markdown("""
-    Sigue estos pasos sencillos para llevar tu aplicación a la web de forma gratuita:
-
-    ### Paso 1: Crear los archivos en tu repositorio de GitHub
-    Crea un repositorio nuevo en [GitHub](https://github.com) y sube los siguientes dos archivos:
-    
-    1. **`app.py`** (El código que escribimos arriba).
-    2. **`requirements.txt`** (Las librerías necesarias).
-
-    Contenido exacto para el archivo **`requirements.txt`**:
-    ```text
-    streamlit>=1.28.0
-    pandas>=2.0.0
-    numpy>=1.24.0
-    ```
-
-    ### Paso 2: Desplegar en Streamlit Community Cloud
-    1. Ve a [share.streamlit.io](https://share.streamlit.io/).
-    2. Inicia sesión con tu cuenta de GitHub.
-    3. Haz clic en **"New app"**.
-    4. Selecciona tu repositorio, la rama (`main` o `master`) y el archivo principal (`app.py`).
-    5. Haz clic en **"Deploy!"** y en unos segundos tendrás tu aplicación lista para compartir mediante un enlace web.
+    1. Ve a tu repositorio en [GitHub](https://github.com).
+    2. Edita o reemplaza el contenido de tu archivo **`app.py`** con este nuevo código completo.
+    3. Asegúrate de que el archivo **`requirements.txt`** contenga:
+       ```text
+       streamlit>=1.28.0
+       pandas>=2.0.0
+       numpy>=1.24.0
+       ```
+    4. Guarda los cambios (**Commit changes**) y tu app en Streamlit Cloud se actualizará automáticamente solucionando el problema visual.
     """)
 
-# Pie de página institucional
 st.markdown("---")
 st.markdown("<p style='text-align: center; color: gray;'>Desarrollado para Ingeniería de Procesos / Diseño de Equipos | Basado en Heurísticas CPI y Materiales de Construcción.</p>", unsafe_allow_html=True)
